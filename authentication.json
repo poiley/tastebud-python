@@ -1,0 +1,7 @@
+{
+    "username": "USERNAME_HERE",
+    "redirect-URI": "http://localhost/",
+    "client-ID": "CLIENTID_HERE",
+    "client-secret": "CLIENTSECRET_HERE",
+    "user-token": "TOKEN_HERE"
+}
