@@ -3,8 +3,8 @@ from collections import Counter
 
 def average_song_length(data):
     s = 0
-    for i in data:
-        s += float(data[i][6]) #sum
+    for line in data:
+        s += float(line[6]) #sum
     return s / len(data) #divide to average
 
 def average_song_length_formatted(data):
@@ -66,7 +66,7 @@ def average_song_completion_for_artist(data, artist):
     return sum_percent_listened / len(song_list)
 
 def percent_listened(line):
-    return ( float(line[5]) / float(line[6]) ) * 100
+    return ( float(line[6]) / float(line[7]) ) * 100
 
 def get_songs(data, artist):
     songs = [ [] ]

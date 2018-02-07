@@ -111,5 +111,6 @@ ENV/
 # mypy
 .mypy_cache/
 
+formatTable.py
 authentication.json
 .cache*

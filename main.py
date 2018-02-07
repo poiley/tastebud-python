@@ -7,11 +7,24 @@ class Bunch:
 
 def read_data(headers, params):
     response = requests.get("https://api.spotify.com/v1/me/player/currently-playing", headers=headers, params=params)
-    return response.status_code, json.loads(response.text)
 
-def read_genre(headers, params, uri):
-    response = requests.get("https://api.spotify.com/v1/albums/"+uri, headers=headers, params=params)
-    return response.status_code, json.loads(response.text)
+    response_as_text = "{}"
+    if response.status_code != 204:
+        response_as_text = response.text
+
+    return response.status_code, json.loads(response_as_text)
+
+def read_artist_data(headers, params, uri):
+    response = requests.get("https://api.spotify.com/v1/artists/" + uri, headers=headers, params=params)
+    return json.loads(response.text)
+
+def read_playlist_data(headers, params, user_id, playlist_id):
+    response = requests.get("https://api.spotify.com/v1/users/" + user_id +"/playlists/" + playlist_id, headers=headers, params=params)
+    return json.loads(response.text)
+
+def read_audio_analysis_data(headers, params, uri):
+    response = requests.get("https://api.spotify.com/v1/audio-features/" + uri, headers=headers, params=params)
+    return json.loads(response.text)
 
 def write_data(now_playing, verbose=False):
     if (now_playing.progress / 1000) >= (now_playing.length / 1000 - 1):
@@ -22,9 +35,11 @@ def write_data(now_playing, verbose=False):
                 now_playing.album   + "," + \
                 now_playing.genre   + "," + \
                 now_playing.uri     + "," + \
+                now_playing.playlist+ "," + \
                 str(now_playing.progress / 1000)  + "," + \
                 str(now_playing.length / 1000) + "," + \
-                str(datetime.datetime.now().strftime('%w %H:%M:%S'))
+                str(now_playing.start_time) + "," + \
+                str(now_playing.tempo)
 
     if now_playing.song != get_last_line().split(",")[0]: #if the latest song in the list is NOT the one playing
         open("data.csv", "a").write("\n"+output+"\n")
@@ -36,38 +51,53 @@ def write_data(now_playing, verbose=False):
 def get_last_line():
     return open('data.csv', 'r').read().splitlines()[-1]
 
-def sanitize_data(data):
+def sanitize_data():
     lines = open("data.csv","r").read().splitlines()
 
     index_first_correct_line = 0
-    dataFile = open("data.csv","w")
+    data_file = open("data.csv","w")
     for line in lines:
         if spotifyCalculations.percent_listened(line.split(",")) > 25:
             if line is not lines[0 + index_first_correct_line]: #for every valid line except the first, put a "\n" before the data
-                dataFile.write("\n")
-            dataFile.write(line)
+                data_file.write("\n")
+            data_file.write(line)
         else:
             if line is lines[0]: #if the first line is not properly formatted, add one to the index so as to start formatting correctly
                 index_first_correct_line += 1
-            print("REMOVING:\t"+line)
+            print("REMOVING:\t"+line.split(",")[0])
 
-    dataFile.close()
+    data_file.close()
 
 def get_song_data(data, headers=None, params=None):
-    now_playing = Bunch(song=None)
+    now_playing = Bunch(playlist="", genre = "", tempo = -1.0)
+
     now_playing.song        = str(data["item"]["name"]).replace(",", "")
     now_playing.album       = str(data["item"]["album"]["name"]).replace(",", "")
     now_playing.artist      = str(data["item"]["artists"][0]["name"]).replace(",", "")
     now_playing.uri         = data["item"]["uri"]
     now_playing.length      = data["item"]["duration_ms"]
     now_playing.progress    = data["progress_ms"]
-    now_playing.genre       = ""
-    now_playing.start_time  = datetime.datetime.now().strftime("%w %H:%M:%S")
+
+    start_time              = datetime.datetime.now() - datetime.timedelta(milliseconds=now_playing.progress)
+    now_playing.start_time  = start_time.strftime("%w %H:%M:%S")
 
     if headers is not None and params is not None:
-        genre_data = read_genre(headers, params, data["item"]["album"]["id"])[1]["genres"]
-        if genre_data:
-            now_playing.genre = genre_data[0].replace(",", "")
+        try:
+            user_id     = data["context"]["uri"].split(":")[2]
+            playlist_id = data["context"]["uri"].split(":")[4]
+            artist_id   = data["item"]["artists"][0]["id"]
+            song_id     = now_playing.uri.split(":")[2]
+
+            playlist_data        = read_playlist_data(headers, params, user_id, playlist_id)
+            now_playing.playlist = playlist_data["name"].replace(",", "")
+
+            audio_analysis_data  = read_audio_analysis_data(headers, params, song_id)
+            now_playing.tempo    = audio_analysis_data["tempo"]
+
+            artist_data          = read_artist_data(headers, params, artist_id)
+            now_playing.genre    = artist_data["genres"][0].replace(",", "")
+        except (KeyError, TypeError):
+            pass
 
     return now_playing
 
@@ -81,9 +111,11 @@ def main():
     params      = ( ('market', 'US'), )
 
     code, data = read_data(headers, params)
-    now_playing = get_song_data(data, headers, params)
 
-    #time of day, average beat per minute, if it's on a playlist, genre, etc.
+    if code != 204:
+        now_playing = get_song_data(data, headers, params)
+
+    # maybe record if it's on a playlist?
     try:
         while(True):
             code, data = read_data(headers, params)
@@ -91,16 +123,20 @@ def main():
             if code == 401:
                 headers = { 'Accept': 'application/json', 'Content-Type': 'application/json', 'Authorization': 'Bearer '+get_token(), }
                 continue
+            elif code == 204: # nothing playing!
+                os.system("cls")
+                print("Nothing Playing.")
+                time.sleep(1)
+                continue
 
             now_playing = get_song_data(data, headers, params)
 
             os.system("cls")
 
             print_album(now_playing)
-
             write_data(now_playing)
     except KeyboardInterrupt:
-        sanitize_data(data)
+        sanitize_data()
 
 def print_album(now_playing):
     m, s     = divmod(now_playing.length/1000, 60)
@@ -109,19 +145,19 @@ def print_album(now_playing):
     m, s     = divmod(now_playing.progress/1000, 60)
     progress = str(int(m)).zfill(2)+":"+str(int(s)).zfill(2)
 
-    print(" ____________________ ")
-    print("|                    |")
+    side_lines = "|"+ (20 * " ") +"|"
+    base       = "|     ;          ;   |\t"
+
+    song    = "Song:\t\t"  + ((now_playing.song[:27]   + '...') if len(now_playing.song)   >= 27 else now_playing.song)
+    album   = "Album:\t\t" + ((now_playing.album[:27]  + '...') if len(now_playing.album)  >= 27 else now_playing.album)
+    artist  = "Artist\t\t" + ((now_playing.artist[:27] + '...') if len(now_playing.artist) >= 27 else now_playing.artist)
+    playlist= "Playlist:\t" + ((now_playing.playlist[:27] + '...') if len(now_playing.playlist) >= 27 else now_playing.playlist)
+    print(" " + (20 * "_") + " \n" + side_lines)
     print("|     ;;;;;;;;;;;;   |")
-    print("|     ;          ;   |\tSong:\t"+now_playing.song)
-    print("|     ;          ;   |\tAlbum:\t"+now_playing.album)
-    print("|     ;          ;   |\tArtist:\t"+now_playing.artist)
-    print("|     ;          ;   |")
-    print("|     ;          ;   |")
-    print("|     ;          ;   |")
+    print(base + song + "\n" + base + album + "\n" + base + artist + "\n" + base + playlist + "\n" + base + "\n" + base)
     print("|  ,;;;       ,;;;   |\t" + progress + " / " + length)
-    print("|  `;;'       `;;'   |")
-    print("|                    |")
-    print("|____________________|")
+    print("|  `;;'       `;;'   |\n" + side_lines)
+    print("|" + (20 * "_") + "|")
 
 if __name__ == "__main__":
     main()
