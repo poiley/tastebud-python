@@ -106,6 +106,27 @@ def get_song_data(data, headers=None, params=None):
 
     return now_playing
 
+def print_album(now_playing):
+    m, s     = divmod(now_playing.length/1000, 60)
+    length   = str(int(m)).zfill(2)+":"+str(int(s)).zfill(2)
+
+    m, s     = divmod(now_playing.progress/1000, 60)
+    progress = str(int(m)).zfill(2)+":"+str(int(s)).zfill(2)
+
+    side_lines = "|"+ (20 * " ") +"|"
+    base       = "|     ;          ;   |\t"
+
+    song    = "Song:\t\t"  + ((now_playing.song[:27]   + '...') if len(now_playing.song)   >= 27 else now_playing.song)
+    album   = "Album:\t\t" + ((now_playing.album[:27]  + '...') if len(now_playing.album)  >= 27 else now_playing.album)
+    artist  = "Artist\t\t" + ((now_playing.artist[:27] + '...') if len(now_playing.artist) >= 27 else now_playing.artist)
+    playlist= "Playlist:\t" + ((now_playing.playlist[:27] + '...') if len(now_playing.playlist) >= 27 else now_playing.playlist)
+    print(" " + (20 * "_") + " \n" + side_lines)
+    print("|     ;;;;;;;;;;;;   |")
+    print(base + song + "\n" + base + album + "\n" + base + artist + "\n" + base + playlist + "\n" + base + "\n" + base)
+    print("|  ,;;;       ,;;;   |\t" + progress + " / " + length)
+    print("|  `;;'       `;;'   |\n" + side_lines)
+    print("|" + (20 * "_") + "|")
+
 def get_token():
     spotifyAuth.refresh()
     auth = json.load(open("authentication.json", 'r'))
@@ -120,9 +141,6 @@ def main():
     if code != 204:
         now_playing = get_song_data(data, headers, params)
 
-    update_data(headers,params)
-
-    # maybe record if it's on a playlist?
     try:
         while(True):
             code, data = read_data(headers, params)
@@ -144,27 +162,6 @@ def main():
             write_data(now_playing)
     except KeyboardInterrupt:
         sanitize_data()
-
-def print_album(now_playing):
-    m, s     = divmod(now_playing.length/1000, 60)
-    length   = str(int(m)).zfill(2)+":"+str(int(s)).zfill(2)
-
-    m, s     = divmod(now_playing.progress/1000, 60)
-    progress = str(int(m)).zfill(2)+":"+str(int(s)).zfill(2)
-
-    side_lines = "|"+ (20 * " ") +"|"
-    base       = "|     ;          ;   |\t"
-
-    song    = "Song:\t\t"  + ((now_playing.song[:27]   + '...') if len(now_playing.song)   >= 27 else now_playing.song)
-    album   = "Album:\t\t" + ((now_playing.album[:27]  + '...') if len(now_playing.album)  >= 27 else now_playing.album)
-    artist  = "Artist\t\t" + ((now_playing.artist[:27] + '...') if len(now_playing.artist) >= 27 else now_playing.artist)
-    playlist= "Playlist:\t" + ((now_playing.playlist[:27] + '...') if len(now_playing.playlist) >= 27 else now_playing.playlist)
-    print(" " + (20 * "_") + " \n" + side_lines)
-    print("|     ;;;;;;;;;;;;   |")
-    print(base + song + "\n" + base + album + "\n" + base + artist + "\n" + base + playlist + "\n" + base + "\n" + base)
-    print("|  ,;;;       ,;;;   |\t" + progress + " / " + length)
-    print("|  `;;'       `;;'   |\n" + side_lines)
-    print("|" + (20 * "_") + "|")
 
 if __name__ == "__main__":
     main()
