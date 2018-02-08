@@ -83,17 +83,22 @@ def get_song_data(data, headers=None, params=None):
 
     if headers is not None and params is not None:
         try:
-            user_id     = data["context"]["uri"].split(":")[2]
-            playlist_id = data["context"]["uri"].split(":")[4]
-            artist_id   = data["item"]["artists"][0]["id"]
-            song_id     = now_playing.uri.split(":")[2]
-
+            user_id              = data["context"]["uri"].split(":")[2]
+            playlist_id          = data["context"]["uri"].split(":")[4]
             playlist_data        = read_playlist_data(headers, params, user_id, playlist_id)
             now_playing.playlist = playlist_data["name"].replace(",", "")
+        except (KeyError, TypeError):
+            pass
 
+        try:
+            song_id              = now_playing.uri.split(":")[2]
             audio_analysis_data  = read_audio_analysis_data(headers, params, song_id)
-            now_playing.tempo    = audio_analysis_data["tempo"]
+            now_playing.tempo    = float(audio_analysis_data["tempo"])
+        except (KeyError, TypeError):
+            pass
 
+        try:
+            artist_id            = data["item"]["artists"][0]["id"]
             artist_data          = read_artist_data(headers, params, artist_id)
             now_playing.genre    = artist_data["genres"][0].replace(",", "")
         except (KeyError, TypeError):
@@ -114,6 +119,8 @@ def main():
 
     if code != 204:
         now_playing = get_song_data(data, headers, params)
+
+    update_data(headers,params)
 
     # maybe record if it's on a playlist?
     try:
