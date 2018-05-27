@@ -39,7 +39,7 @@ def get_token():
 def get_header():
     return { 'Accept': 'application/json',
              'Content-Type': 'application/json',
-             'Access-Control-Allow-Origin': '*',
+            # 'Access-Control-Allow-Origin': '*',
              'Authorization': 'Bearer '+get_token(), }
 
 def get_saved_tracks():
@@ -87,10 +87,13 @@ def get_reccomendations_with_algo(query):
         "seed_genres": ','.join(seeds["genres"]),
         "seed_artists": ','.join(artist_ids),
         "target_time_signature": input_time_signature,
-        "target_key": input_key,
+        "target_key": None,
         "target_mode": query["mode"],
         "mode_control": query["mode_control"]
     }
+
+    if input_key is not None:
+        query_params["target_key"] = keysInNumberFormat[input_key]
 
     with open('traits.json') as trait_file:
         trait_db = json.load(trait_file)
