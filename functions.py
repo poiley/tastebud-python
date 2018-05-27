@@ -39,6 +39,7 @@ def get_token():
 def get_header():
     return { 'Accept': 'application/json',
              'Content-Type': 'application/json',
+             'Access-Control-Allow-Origin': '*',
              'Authorization': 'Bearer '+get_token(), }
 
 def get_saved_tracks():
