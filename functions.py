@@ -42,19 +42,23 @@ def get_header():
              'Authorization': 'Bearer '+get_token(), }
 
 def get_saved_tracks():
-    headers     = get_header()
-    code, data  = read_data(headers)
+    headers = get_header()
+    url = "https://api.spotify.com/v1/me/tracks"
+    data = json.loads(requests.get(url, headers=headers))
 
     tracks = { "Tracks": [] }
-    for track in data["items"]:
-        track = track["track"]
+    while(data["next"] != None and data["next"] != ""):
+        for track in data["items"]:
+            track = track["track"]
 
-        tracks["Tracks"].append({ "Name": track["name"],
-                                  "Artist": track["artists"][0]["name"],
-                                  "Album": track["album"]["name"],
-                                  "ID": track["id"],
-                                  "features": get_features(headers, track["id"]),
-                                  "listens": 0 })
+            tracks["Tracks"].append({ "Name": track["name"],
+                                      "Artist": track["artists"][0]["name"],
+                                      "Album": track["album"]["name"],
+                                      "ID": track["id"],
+                                      "features": get_features(headers, track["id"]),
+                                      "listens": 0 })
+        url = data["next"]
+        data = json.loads(requests.get(url, headers=headers))
     return tracks
 
 def get_artist_ids(header, artist_names):
@@ -132,6 +136,10 @@ def get_playlist_from_ids(ids):
     add_songs_to_playlist(headers, username, playlist_id, ids)
 
     return { "url": json.loads(requests.get(playlist_url, headers=headers).text)["external_urls"]["spotify"] }
+
+
+def main():
+    get_saved_tracks()
 
 if __name__ == "__main__":
     main()
