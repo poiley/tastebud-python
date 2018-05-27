@@ -19,7 +19,7 @@ def reccomend_playist():
         "limit": request.args.get('tracks')
     }
     reccomendations = functions.get_reccomendations_with_algo(input)
-    return jsonify(functions.get_playlist_from_ids(reccomendations))
+    return jsonify(functions.get_playlist_from_ids(reccomendations, input["artists"][0], input["traits"][0]))
 
 @app.route("/music/saved")
 def get_saved_tracks():

@@ -20,7 +20,10 @@ def get_features(headers, song_id):
 def get_artist_id(headers, artist):
     url = URL_BASE + "search?q=" + (artist.replace(" ", "%20")) + "&type=artist"
     response = requests.get(url, headers=headers)
-    return json.loads(response.text)["artists"]["items"][0]["id"]
+    try:
+        return json.loads(response.text)["artists"]["items"][0]["id"]
+    except IndexError:
+        return ""
 
 def get_recomendations_url(headers, params):
     url = URL_BASE + "recommendations"
@@ -40,6 +43,9 @@ def get_header():
     return { 'Accept': 'application/json',
              'Content-Type': 'application/json',
              'Authorization': 'Bearer '+get_token(), }
+
+def get_playlist_name(artist, trait):
+    return trait + " " + artist + " - TasteBud, " + datetime.datetime.now().strftime('%B %d, %Y')
 
 def get_saved_tracks():
     headers = get_header()
@@ -87,12 +93,14 @@ def get_reccomendations_with_algo(query):
         "seed_artists": ','.join(artist_ids),
         "target_time_signature": input_time_signature,
         "target_key": None,
-        "target_mode": query["mode"],
-        "mode_control": query["mode_control"]
+        "target_mode": None,
+        "mode_control": None
     }
 
-    if input_key is not None:
+    if query_params["mode_control"] != 0 and query_params["mode_control"] != None:
+        query_params["mode_control"] = query["mode_control"]
         query_params["target_key"] = keysInNumberFormat[input_key]
+        query_params["target_mode"] = query["target_mode"]
 
     with open('traits.json') as trait_file:
         trait_db = json.load(trait_file)
@@ -106,8 +114,10 @@ def get_reccomendations_with_algo(query):
     data = get_recomendation_objects(headers, query_params)
 
     ids = []
-    for track in data["tracks"]:
-        ids.append(track["id"])
+    if "tracks" in data.keys():
+        for track in data["tracks"]:
+            if "id" in track.keys():
+                ids.append(track["id"])
 
     return ids
 
@@ -116,19 +126,20 @@ def add_songs_to_playlist(headers, username, playlist_id, track_ids):
                              headers=headers,
                              data=json.dumps({ "uris": track_ids }))
 
-def get_playlist_from_ids(ids):
+def get_playlist_from_ids(ids, artist, trait):
     headers = get_header()
 
     if(len(ids) == 0):
         return ""
 
-    title = "Tastemkr - " + datetime.datetime.now().strftime('%B %d, %Y')
+    title = get_playlist_name(artist, trait)
 
     username = json.loads(requests.get("https://api.spotify.com/v1/me", headers=headers).text)["uri"].split(":")[2]
 
     url = "https://api.spotify.com/v1/users/" + username + "/playlists"
 
     playlist_data = json.loads(requests.post(url, headers=headers, data=json.dumps({ "name": title })).text)
+
     playlist_id = playlist_data["id"]
     playlist_url = playlist_data["href"]
 
