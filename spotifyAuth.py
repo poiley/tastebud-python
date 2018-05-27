@@ -1,7 +1,7 @@
 import sys, json
 import spotipy.util as util
 
-scope = 'user-library-read user-read-currently-playing user-read-playback-state'
+scope = 'user-library-read user-read-currently-playing user-read-playback-state playlist-modify-public'
 
 def refresh():
     data = json.load(open('authentication.json', 'r'))
