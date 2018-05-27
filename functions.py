@@ -1,5 +1,5 @@
 import requests, json, time, os, datetime
-import spotifyAuth, spotifyCalculations
+import authentication
 
 URL_BASE = "https://api.spotify.com/v1/"
 
@@ -32,7 +32,7 @@ def get_recomendation_objects(headers, params):
     return json.loads(response.text)
 
 def get_token():
-    spotifyAuth.refresh()
+    authentication.refresh()
     auth = json.load(open("authentication.json", 'r'))
     return auth["user-token"]
 
@@ -63,15 +63,15 @@ def get_artist_ids(header, artist_names):
         ids.append(get_artist_id(header, artist))
     return ids
 
-def get_reccomendations_with_algo():
-    headers     = get_header()
-    seeds = { "artists": ["Kendrick Lamar", "Johnny Cash"],
-              "tracks": [""],
-              "genres":  ["hip hop"]}
-    input_time_signature = 4
-    input_number_of_responses = 10
-    input_key = "D"
-    input_traits = ["happy", "sad"]
+def get_reccomendations_with_algo(query):
+    headers = get_header()
+    seeds = { "artists": query["artists"],
+              "tracks": query["tracks"],
+              "genres":  query["genres"] }
+    input_time_signature = query["signature"]
+    input_number_of_responses = query["limit"]
+    input_key = query["key"]
+    input_traits = query["traits"]
 
     artist_ids = get_artist_ids(headers, seeds["artists"])
     keysInNumberFormat = { "C": 0, "C#": 1, "D": 2, "D#": 3, "E": 4, "F": 5, "F#": 6, "G": 7, "G#": 8, "A": 9, "A#": 10, "B": 11 }
@@ -80,10 +80,11 @@ def get_reccomendations_with_algo():
         "limit": input_number_of_responses,
         "seed_tracks": ','.join(seeds["tracks"]),
         "seed_genres": ','.join(seeds["genres"]),
-        "seed_artists": "2YZyLoL8N0Wb9xBt1NhZWg,32gPTeIPJMAy26LBrJqEAs",#','.join(artist_ids),
+        "seed_artists": ','.join(artist_ids),
         "target_time_signature": input_time_signature,
         "target_key": keysInNumberFormat[input_key],
-        "target_mode": 0
+        "target_mode": query["mode"],
+        "mode_control": query["mode_control"]
     }
 
     with open('traits.json') as trait_file:
@@ -94,8 +95,6 @@ def get_reccomendations_with_algo():
         for lookup_str in trait["attributes"].keys():
             type = trait["attributes"][lookup_str]["type"]
             query_params.update({ type + "_" + lookup_str: trait["attributes"][lookup_str]["value"] })
-
-    query_params.pop('max_valence', query_params['max_valence'])
 
     data = get_recomendation_objects(headers, query_params)
 
@@ -132,11 +131,7 @@ def get_playlist_from_ids(ids):
 
     add_songs_to_playlist(headers, username, playlist_id, ids)
 
-    return json.loads(requests.get(playlist_url, headers=headers).text)["external_urls"]["spotify"]
-
-def main():
-    print(get_playlist_from_ids(get_reccomendations_with_algo()))
-
+    return { "url": json.loads(requests.get(playlist_url, headers=headers).text)["external_urls"]["spotify"] }
 
 if __name__ == "__main__":
     main()
