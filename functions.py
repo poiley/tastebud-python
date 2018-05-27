@@ -5,7 +5,7 @@ URL_BASE = "https://api.spotify.com/v1/"
 
 def read_data(headers):
     url = URL_BASE + "me/tracks"
-    response = requests.get(url, headers=headers)
+    response = requests.get(url, headers=headers, params={"limit": 50})
     response_as_text = "{}"
     if response.status_code != 204:
         response_as_text = response.text
@@ -39,7 +39,6 @@ def get_token():
 def get_header():
     return { 'Accept': 'application/json',
              'Content-Type': 'application/json',
-            # 'Access-Control-Allow-Origin': '*',
              'Authorization': 'Bearer '+get_token(), }
 
 def get_saved_tracks():
@@ -48,7 +47,7 @@ def get_saved_tracks():
     data = json.loads(requests.get(url, headers=headers).text)
 
     tracks = { "Tracks": [] }
-    while("next" in data.keys() and data["next"] != None and data["next"] != ""):
+    while("next" in data.keys()):
         for track in data["items"]:
             track = track["track"]
 
@@ -119,7 +118,6 @@ def add_songs_to_playlist(headers, username, playlist_id, track_ids):
 
 def get_playlist_from_ids(ids):
     headers = get_header()
-    session = requests.Session()
 
     if(len(ids) == 0):
         return ""

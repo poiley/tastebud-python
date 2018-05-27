@@ -1,8 +1,9 @@
 import functions
-from flask import jsonify
-from flask import Flask
-from flask import request
+from flask import jsonify, Flask, request
+from flask_cors import CORS
+
 app = Flask(__name__)
+cors = CORS(app, resources={r"/music/*": {"origins": "*"}})
 
 @app.route("/music/playlist")
 def reccomend_playist():
