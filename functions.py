@@ -53,6 +53,7 @@ def get_saved_tracks():
     data = json.loads(requests.get(url, headers=headers).text)
 
     tracks = { "Tracks": [] }
+    track_index = 0
     while("next" in data.keys()):
         for track in data["items"]:
             track = track["track"]
@@ -63,8 +64,19 @@ def get_saved_tracks():
                                       "ID": track["id"],
                                       "features": get_features(headers, track["id"]),
                                       "listens": 0 })
+            track_index += 1
+            if track_index % 100 == 0:
+                print(str(track_index) + " songs queried!")
+
         url = data["next"]
+        if url == None:
+            break
         data = json.loads(requests.get(url, headers=headers).text)
+        
+        if "Retry-After" in data.keys():
+            print("Rate limited! Trying again in " + str(data["Retry-After"]) + " seconds.")
+            time.sleep(data["Retry-After"])
+
     return tracks
 
 def get_artist_ids(header, artist_names):

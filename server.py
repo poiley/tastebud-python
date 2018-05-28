@@ -1,4 +1,4 @@
-import functions
+import functions, json
 from flask import jsonify, Flask, request
 from flask_cors import CORS
 
@@ -23,4 +23,9 @@ def reccomend_playist():
 
 @app.route("/music/saved")
 def get_saved_tracks():
-    return jsonify(functions.get_saved_tracks())
+    data = functions.get_saved_tracks()
+
+    with open("saved.json", "w+") as file:
+        json.dump(data, file)
+
+    return jsonify(data)
