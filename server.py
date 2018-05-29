@@ -10,13 +10,14 @@ def reccomend_playist():
     input = {
         "artists": request.args.get('artists', default=[]).split(","),
         "tracks": [],
+        "tracks": request.args.get('tracks', default=[]).split(","),
         "genres": request.args.get('genres', default=[]).split(","),
         "traits": request.args.get('traits', default=[]).split(","),
         "key": request.args.get('key'),
         "signature": request.args.get('signature'),
         "mode": request.args.get('mode'),
         "mode_control": request.args.get('modecontrol'),
-        "limit": request.args.get('tracks')
+        "limit": request.args.get('limit')[6:]
     }
     reccomendations = functions.get_reccomendations_with_algo(input)
     return jsonify(functions.get_playlist_from_ids(reccomendations, input["artists"][0], input["traits"][0]))

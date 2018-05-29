@@ -17,13 +17,35 @@ def get_features(headers, song_id):
     response = requests.get(url, headers=headers)
     return json.loads(response.text)
 
+def get_track_id(headers, track_name):
+    url = URL_BASE + "search?q=" + track_name.replace(" ", "%20") + "&type=track"
+    response = requests.get(url, headers=headers)
+    try:
+        return json.loads(response.text)["tracks"]["items"][0]["id"]
+    except IndexError, KeyError:
+        return ""
+
+def get_track_ids(headers, tracks):
+    ids = []
+    if tracks:
+        for track in tracks:
+            ids.append(get_track_id(headers, track))
+    return ids
+
 def get_artist_id(headers, artist):
-    url = URL_BASE + "search?q=" + (artist.replace(" ", "%20")) + "&type=artist"
+    url = URL_BASE + "search?q=" + artist.replace(" ", "%20") + "&type=artist"
     response = requests.get(url, headers=headers)
     try:
         return json.loads(response.text)["artists"]["items"][0]["id"]
     except IndexError:
         return ""
+
+def get_artist_ids(headers, artist_names):
+    ids = []
+    if artist_names:
+        for artist in artist_names:
+            ids.append(get_artist_id(headers, artist))
+    return ids
 
 def get_recomendations_url(headers, params):
     url = URL_BASE + "recommendations"
@@ -41,6 +63,7 @@ def get_token():
 
 def get_header():
     return { 'Accept': 'application/json',
+             'Access-Control-Allow-Origin': '*',
              'Content-Type': 'application/json',
              'Authorization': 'Bearer '+get_token(), }
 
@@ -72,41 +95,34 @@ def get_saved_tracks():
         if url == None:
             break
         data = json.loads(requests.get(url, headers=headers).text)
-        
+
         if "Retry-After" in data.keys():
             print("Rate limited! Trying again in " + str(data["Retry-After"]) + " seconds.")
             time.sleep(data["Retry-After"])
 
     return tracks
 
-def get_artist_ids(header, artist_names):
-    ids = []
-    for artist in artist_names:
-        ids.append(get_artist_id(header, artist))
-    return ids
-
 def get_reccomendations_with_algo(query):
     headers = get_header()
-    seeds = { "artists": query["artists"],
-              "tracks": query["tracks"],
+    seeds = { "artists": get_artist_ids(headers, query["artists"]),
+              "tracks": get_track_ids(headers, query["tracks"]),
               "genres":  query["genres"] }
     input_time_signature = query["signature"]
     input_number_of_responses = query["limit"]
     input_key = query["key"]
     input_traits = query["traits"]
 
-    artist_ids = get_artist_ids(headers, seeds["artists"])
     keysInNumberFormat = { "C": 0, "C#": 1, "D": 2, "D#": 3, "E": 4, "F": 5, "F#": 6, "G": 7, "G#": 8, "A": 9, "A#": 10, "B": 11 }
 
     query_params = {
-        "limit": input_number_of_responses,
         "seed_tracks": ','.join(seeds["tracks"]),
         "seed_genres": ','.join(seeds["genres"]),
-        "seed_artists": ','.join(artist_ids),
+        "seed_artists": ','.join(seeds["artists"]),
         "target_time_signature": input_time_signature,
         "target_key": None,
         "target_mode": None,
-        "mode_control": None
+        "mode_control": None,
+        "limit": input_number_of_responses
     }
 
     if query_params["mode_control"] != 0 and query_params["mode_control"] != None:
